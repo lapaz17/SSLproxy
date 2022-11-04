@@ -722,3 +722,87 @@ See [`AUTHORS.md`](AUTHORS.md) for the list of contributors.
 
 SSLproxy was inspired by and has been developed based on [SSLsplit](https://www.roe.ch/SSLsplit) 
 by Daniel Roethlisberger.
+
+
+## Listening Program Example
+```
+import socket, traceback
+
+HOST = ''
+PORT = 8080
+CLRF = '\r\n'
+
+class InvalidRequest(Exception):
+	pass
+
+class Request(object):
+	"A simple http request object"
+	
+	def __init__(self, raw_request):
+		self._raw_request = raw_request
+		
+		self._respomse = self.parse_request()
+	
+	def parse_request(self):
+		"Turn basic request headers in something we can use"
+		temp = [i.strip() for i in self._raw_request.splitlines()]
+		
+		if -1 == str(temp[0]).find('HTTP'):
+			raise InvalidRequest('Incorrect Protocol')
+		startOfPort = temp[1].find(":",9)+1
+		#portC= temp[1][startOfPort]
+		endOfPort = temp[1].find(",")
+		portC = temp[1][startOfPort:endOfPort]
+		clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM);
+		clientSocket.connect(("127.0.0.1",int(portC)));
+		clientSocket.sendall(str.encode(self._raw_request));
+		dataR = clientSocket.recv(40960);
+		dataRDecoded = dataR.decode()
+		if dataRDecoded.find("HTTP/1.0 200") ==0:
+			clientSocket.close()
+			return dataR
+		clientSocket.close()
+
+		
+		return 1
+	
+	def __repr__(self):
+		return repr({'method': self._method, 'path': self._path, 'protocol': self._protocol, 'headers': self._headers})
+		
+		
+
+# the actual server starts here
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.bind((HOST, PORT))
+s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+s.listen(5)
+
+while True:
+	try:
+		clientsock, clientaddress = s.accept()
+	except KeyboardInterrupt:
+		raise
+	except:
+		traceback.print_exc()
+	
+	try:
+		request = clientsock.recv(1024)
+		request = Request(request.decode('utf-8'))
+		clientsock.send(request._respomse)
+	except(KeyboardInterrupt, SystemExit):
+		raise
+	except InvalidRequest:
+		clientsock.send('HTTP/1.1 400 Bad Request' + CLRF)
+		clientsock.send('Content-Type: text/html' + CLRF*2)
+		clientsock.send('<h1>Invalid Request: %s</h1>' )
+	except:
+		traceback.print_exc()
+	
+	try:
+		clientsock.close()
+	except KeyboardInterrupt:
+		raise
+	except:
+		traceback.print_exc()
+		
+```
