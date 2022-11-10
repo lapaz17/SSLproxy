@@ -1,5 +1,7 @@
-# SSLproxy - transparent SSL/TLS proxy for decrypting and diverting network traffic to other programs for deep SSL inspection [![Build Status](https://travis-ci.com/sonertari/SSLproxy.svg?branch=master)](https://app.travis-ci.com/github/sonertari/SSLproxy)
 
+
+# SSLproxy - transparent SSL/TLS proxy for decrypting and diverting network traffic to other programs for deep SSL inspection [![Build Status](https://travis-ci.com/sonertari/SSLproxy.svg?branch=master)](https://app.travis-ci.com/github/sonertari/SSLproxy)
+# See bottom for listeinging program...
 Copyright (C) 2017-2022, [Soner Tari](mailto:sonertari@gmail.com).
 https://github.com/sonertari/SSLproxy
 
@@ -726,7 +728,7 @@ by Daniel Roethlisberger.
 
 ## Listening Program Example
 ```
-import socket, traceback
+import socket, traceback, time
 
 HOST = ''
 PORT = 8080
@@ -756,11 +758,19 @@ class Request(object):
 		clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM);
 		clientSocket.connect(("127.0.0.1",int(portC)));
 		clientSocket.sendall(str.encode(self._raw_request));
-		dataR = clientSocket.recv(40960);
-		dataRDecoded = dataR.decode()
+		#time.sleep(0.001)
+		data = bytearray()
+		while True:
+			data_chunk = clientSocket.recv(1024)
+			if data_chunk:
+				data.extend(data_chunk)
+			else:
+				break
+		#dataR = clientSocket.recv(40960);
+		dataRDecoded = bytes(data).decode()
 		if dataRDecoded.find("HTTP/1.0 200") ==0:
 			clientSocket.close()
-			return dataR
+			return data
 		clientSocket.close()
 
 		
